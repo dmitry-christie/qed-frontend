@@ -92,26 +92,30 @@
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
 
-<script type="text/babel" src="ios-frame.jsx"></script>
-<script type="text/babel" src="qed-tokens.jsx"></script>
-<script type="text/babel" src="qed-ui.jsx"></script>
-<script type="text/babel" src="qed-shell.jsx"></script>
-<script type="text/babel" src="qed-listing.jsx"></script>
-<script type="text/babel" src="qed-detail.jsx"></script>
-<script type="text/babel" src="qed-other.jsx"></script>
-<script type="text/babel" src="qed-profile.jsx"></script>
+<script type="text/babel" src="ios-frame.jsx?v=9"></script>
+<script type="text/babel" src="qed-tokens.jsx?v=9"></script>
+<script type="text/babel" src="qed-ui.jsx?v=9"></script>
+<script type="text/babel" src="qed-i18n.jsx?v=9"></script>
+<script type="text/babel" src="qed-shell.jsx?v=9"></script>
+<script type="text/babel" src="qed-listing.jsx?v=10"></script>
+<script type="text/babel" src="qed-detail.jsx?v=9"></script>
+<script type="text/babel" src="qed-other.jsx?v=9"></script>
+<script type="text/babel" src="qed-profile.jsx?v=9"></script>
+<script type="text/babel" src="qed-error.jsx?v=9"></script>
 
 <script type="text/babel" data-presets="react">
   const FRAME_W = 402;
   const FRAME_H = 874;
 
-  const SCREENS = ['home', 'listing', 'detail', 'success', 'profile'];
+  const SCREENS = ['home', 'listing', 'detail', 'success', 'profile', 'notfound', 'error'];
   const SCREEN_LABEL = {
     home: '01 · Home',
     listing: '02 · Events',
     detail: '03 · Booking',
     success: '04 · Confirmed',
     profile: '05 · Profile',
+    notfound: '06 · 404',
+    error: '07 · Error',
   };
 
   function App() {
@@ -121,6 +125,7 @@
     const [scrollToForm, setScrollToForm] = React.useState(false);
     const [explainerSeen, setExplainerSeen] = React.useState(false);
     const [city, setCity] = React.useState('Valencia');
+    const [lang, setLang] = React.useState('EN');
     const isMobile = window.innerWidth < 500;
 
     // Hide boot loader once mounted
@@ -167,6 +172,8 @@
     const goDetail  = (ev, opts = {}) => { if (ev) setEvent(ev); setScrollToForm(!!opts.scrollToForm); setScreen('detail'); };
     const goDetailForm = (ev) => goDetail(ev, { scrollToForm: true });
     const goProfile = () => setScreen('profile');
+    const goNotFound = () => setScreen('notfound');
+    const goError    = () => setScreen('error');
     const goSuccess = ({ event: ev, guests: g } = {}) => {
       if (ev) setEvent(ev);
       if (typeof g === 'number') setGuests(g);
@@ -176,7 +183,7 @@
     const renderScreen = () => {
       switch (screen) {
         case 'home':
-          return <HomeScreen city={city} onCityChange={setCity} onSeeEvents={goListing} explainerSeen={explainerSeen} onProfile={goProfile} />;
+          return <HomeScreen city={city} onCityChange={setCity} onSeeEvents={goListing} explainerSeen={explainerSeen} onProfile={goProfile} onShowNotFound={goNotFound} onShowError={goError} />;
         case 'listing':
           return <ListingScreen city={city} onCityChange={setCity} tweaks={{ showExplainer: true }} onSelectEvent={goDetail} onReserve={goDetailForm} onHome={goHome} onExplainerDismiss={() => setExplainerSeen(true)} onProfile={goProfile} />;
         case 'detail':
@@ -185,45 +192,85 @@
           return <SuccessScreen event={event} guests={guests} onSelectEvent={goDetail} onHome={goListing} onProfile={goProfile} />;
         case 'profile':
           return <ProfileScreen onHome={goHome} />;
+        case 'notfound':
+          return <NotFoundScreen onHome={goHome} onSeeEvents={goListing} onSelectEvent={goDetail} onProfile={goProfile} onShowError={goError} />;
+        case 'error':
+          return <ErrorScreen onHome={goHome} onSeeEvents={goListing} onSelectEvent={goDetail} onProfile={goProfile} onRetry={goListing} onShowNotFound={goNotFound} />;
         default:
           return null;
       }
     };
 
+    const langCtxValue = React.useMemo(
+      () => ({ lang, t: QED_TRANSLATIONS[lang], setLang }),
+      [lang]
+    );
+
     if (isMobile) {
       return (
-        <div className="stage" style={{ padding: 0, justifyContent: 'flex-start' }}>
-          <div ref={scrollHostRef} style={{ width: '100%', height: '100dvh', position: 'relative', overflow: 'hidden' }}>
-            <div data-screen-root key={screen} className="screen-anim" style={{ height: '100%', overflow: 'hidden' }}>
-              {renderScreen()}
+        <LangContext.Provider value={langCtxValue}>
+          <div className="stage" style={{ padding: 0, justifyContent: 'flex-start' }}>
+            <div ref={scrollHostRef} style={{ width: '100%', height: '100dvh', position: 'relative', overflow: 'hidden' }}>
+              <div data-screen-root key={screen} className="screen-anim" style={{ height: '100%', overflow: 'hidden' }}>
+                {renderScreen()}
+              </div>
             </div>
           </div>
-        </div>
+        </LangContext.Provider>
       );
     }
 
     return (
-      <div className="stage">
-        <div className="caption">
-          <strong>QED Valencia</strong> · interactive prototype · {SCREEN_LABEL[screen]}
-        </div>
+      <LangContext.Provider value={langCtxValue}>
+        <div className="stage">
+          <div className="caption">
+            <strong>QED Valencia</strong> · interactive prototype · {SCREEN_LABEL[screen]}
+          </div>
 
-        <div className="frame-wrap" ref={scrollHostRef}>
-          <div className="frame-outer">
-            <div className="frame-scaler">
-              <IOSDevice width={FRAME_W} height={FRAME_H}>
-                <div data-screen-root key={screen} className="screen-anim" style={{ height: '100%', overflow: 'hidden' }}>
-                  {renderScreen()}
-                </div>
-              </IOSDevice>
+          <div className="frame-wrap" ref={scrollHostRef}>
+            <div className="frame-outer">
+              <div className="frame-scaler">
+                <IOSDevice width={FRAME_W} height={FRAME_H}>
+                  <div data-screen-root key={screen} className="screen-anim" style={{ height: '100%', overflow: 'hidden' }}>
+                    {renderScreen()}
+                  </div>
+                </IOSDevice>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="footer-note">
-          Tap through the flow: pick a quiz → reserve → confirmation. Events &amp; pricing are illustrative.
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <span style={{ fontFamily: 'JetBrains Mono, ui-monospace, monospace', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(31,26,20,0.4)', marginRight: 2 }}>
+              Other screens
+            </span>
+            {[
+              { id: 'profile', label: 'Profile' },
+              { id: 'notfound', label: '404' },
+              { id: 'error', label: 'Error' },
+            ].map(({ id, label }) => {
+              const active = screen === id;
+              return (
+                <button key={id} onClick={() => active ? setScreen('home') : setScreen(id)} style={{
+                  height: 28, padding: '0 12px',
+                  background: active ? '#1F1A14' : 'transparent',
+                  color: active ? '#fff' : 'rgba(31,26,20,0.6)',
+                  border: `1.5px solid ${active ? '#1F1A14' : 'rgba(31,26,20,0.25)'}`,
+                  borderRadius: 999,
+                  fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+                  fontSize: 11, fontWeight: 700, letterSpacing: '0.04em',
+                  cursor: 'pointer', transition: 'all 0.12s',
+                }}>
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="footer-note">
+            Tap through the flow: pick a quiz → reserve → confirmation. Events &amp; pricing are illustrative.
+          </div>
         </div>
-      </div>
+      </LangContext.Provider>
     );
   }
 
