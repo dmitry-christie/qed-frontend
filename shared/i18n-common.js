@@ -6,12 +6,16 @@ Object.assign(window.QED_ES = window.QED_ES || {}, {
   "ui.home": "Inicio QED",
 
   /* footer */
-  "foot.tagPlan": "Organiza una noche",
+  "foot.tagOrganise": "Organiza",
   "foot.tagWork": "Trabaja con nosotros",
+  "foot.tagContact": "Contáctanos",
+  "foot.tagLegal": "Legal",
   "foot.corporate": "Empresas",
   "foot.celebrations": "Celebraciones",
   "foot.partner": "Hazte socio",
   "foot.venue": "Local anfitrión",
+  "foot.privacy": "Política de privacidad",
+  "foot.terms": "Términos",
 
   /* common form fields */
   "form.name": "Tu nombre",
